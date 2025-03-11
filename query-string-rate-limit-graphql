@@ -1,0 +1,26 @@
+map $arg_operationName $do_limit {
+  'checkIban' $binary_remote_addr;
+  default     "";
+}
+
+-----------
+
+limit_req_zone $do_limit zone=mylimit:10m rate=5r/m;
+limit_req_status 429;
+
+-----------
+
+location /graphql {
+  limit_req zone=mylimit burst=4 nodelay;
+  limit_req_status 429;           
+  error_page 429 @too_many_requests;
+  proxy_set_header X-my-headder $do_limit;
+  try_files $uri $uri/ 
+}
+
+-----------
+
+location @too_many_requests {
+  default_type application/json;
+  return 429 '{"error": "Too Many Requests", "message": "0_- buh", "do_limit":"$do_limit"}';
+}
